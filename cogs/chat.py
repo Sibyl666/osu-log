@@ -1,10 +1,12 @@
 import os
+import re
 import random
 import asyncio
 from discord.ext import commands
 
 
-def fix_username(player) -> str:
+def fix_username(player: str) -> str:
+    player = re.escape(player)
     return player.lower().replace("_", "").replace(" ", "_")
 
 
@@ -18,11 +20,7 @@ class Chat(commands.Cog):
         return [file for file in os.listdir("Logs/")]
 
 
-    def logs_in_language(self, language) -> list:
-        return os.listdir(f"./Logs/{language}/")
-
-
-    def language_logs(self, language) -> list:
+    def logs_in_language(self, language: str) -> list:
         return os.listdir(f"./Logs/{language}/")
 
 
@@ -132,7 +130,7 @@ class Chat(commands.Cog):
 
 
     @commands.command()
-    async def random(self, ctx, language = None):
+    async def random(self, ctx, language: str = None):
         """
             Gets Random Message
         """
@@ -166,16 +164,16 @@ class Chat(commands.Cog):
 
 
     @commands.command()
-    async def chat(self, ctx, language, chatlimit=10):
+    async def chat(self, ctx, language, chatlimit: int = 10):
         """
-            Last 10 messages of given Language chat
+            Last 10 messages of given language chat
         """
         
         if language not in self.logs:
             await ctx.send("Cant find language | Example: #turkish")
             return
 
-        last_log_language = self.language_logs(language)[-1]
+        last_log_language = self.logs_in_language(language)[-1]
         with open(f"./Logs/{language}/{last_log_language}", "r", encoding="utf-8", errors="replace") as file:
             content = file.read().splitlines()[-chatlimit:]
 
@@ -191,7 +189,7 @@ class Chat(commands.Cog):
             
 
     @commands.command()
-    async def getrandom(self, ctx, player: fix_username, language):
+    async def getrandom(self, ctx, player: fix_username, language: str):
         """ 
             Get random message from given player
         """
@@ -201,9 +199,8 @@ class Chat(commands.Cog):
 
         msg = await ctx.send(f"Searching {player}")
         for date in self.logs_in_language(language):
-            with open(f"./Logs/{language}/{date}", "r", encoding="utf-8", errors="replace") as file:
-                content = file.read().splitlines()
-                for index, line in enumerate(content):
+            with open(f"./Logs/{language}/{date}", "r", encoding="utf-8", errors="replace") as file: 
+                for index, line in enumerate(file):
                     line = line.strip()
                     
                     try:
@@ -231,13 +228,65 @@ class Chat(commands.Cog):
 
         random_message_id = random.choice(list(player_messages.keys()))
         random_message = player_messages[random_message_id]
+
+        with open(f"./Logs/{language}/{random_message['date']}", "r", encoding="utf-8", errors="replace") as file:
+            content_full = file.read().splitlines()
+
         try:
             await msg.edit(
                 content=f"**Language**: {random_message['language']}\n**Date**: {random_message['date']}\n**Index**: {random_message['index']}\n```{random_message['line']}```")
-            await self.add_reaction(ctx, msg, len(content))
+            await self.add_reaction(ctx, msg, len(content_full))
         except Exception as err:
             await ctx.send(err)
             await msg.clear_reactions()
+
+
+    @commands.command()
+    async def getuser(self, ctx, player: fix_username, language: str, limit=10):
+        """
+            Get user last messages
+        """
+
+        if language not in self.logs:
+            await ctx.send("Cant find language | Example: #turkish")
+            return
+            
+        counter = 0
+        player_messages = []
+        msg = await ctx.send(f"Searching messages of {player}")
+        for log_file in reversed(self.logs_in_language(language)):
+            with open(f"./Logs/{language}/{log_file}", "r", encoding="utf-8", errors="replace") as file:
+                content = file.read().splitlines()
+
+            for line in reversed(content):
+                try:
+                    player_username = re.search(f"<.{player}>", line, re.IGNORECASE)
+                    if not player_username:
+                        continue
+                    player_messages.append(line)
+                    counter += 1
+                except:
+                    continue
+
+                if counter == limit:
+                    break
+
+            if counter == limit:
+                break
+
+        if len(player_messages) < 1:
+            await ctx.send(f"Can't find messages of {player}")
+            return
+
+        chatmsg = "```"
+        for message in reversed(player_messages):
+            chatmsg += f"{message} \n"
+        chatmsg += "```"
+
+        try:
+            await msg.edit(content=chatmsg)
+        except Exception as err:
+            await msg.edit(content=err)
 
 
 
