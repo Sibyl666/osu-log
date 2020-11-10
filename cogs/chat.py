@@ -2,6 +2,7 @@ import os
 import re
 import random
 import asyncio
+from aiofiles import open
 from discord.ext import commands
 
 
@@ -51,8 +52,8 @@ class Chat(commands.Cog):
             index = 5
 
         chatmsg = "```"
-        with open(f"./Logs/{language}/{date}", "r", encoding="utf-8", errors="replace") as file:
-            content = file.read().splitlines()
+        async with open(f"./Logs/{language}/{date}", "r", encoding="utf-8", errors="replace") as file:
+            content = (await file.read()).splitlines()
 
             messages = content[index - 5: index + 6]
 
@@ -118,8 +119,8 @@ class Chat(commands.Cog):
                     await reaction.clear()
 
             chatmsg = "```"
-            with open(f"./Logs/{language}/{date}", "r", encoding="utf-8", errors="replace") as file:
-                content = file.read().splitlines()
+            async with open(f"./Logs/{language}/{date}", "r", encoding="utf-8", errors="replace") as file:
+                content = (await file.read()).splitlines()
                 messages = content[index - 5: index + 6]
 
             for firsts in messages:
@@ -129,6 +130,15 @@ class Chat(commands.Cog):
             await context_msg.edit(content=chatmsg)
 
 
+    @staticmethod
+    async def find_whole_word(word: str, message: str) -> bool:
+        msg = re.search(r"\b{}\b".format(word), message, re.IGNORECASE)
+        if msg:
+            return msg
+        return False
+
+
+    @commands.cooldown(1, 3)
     @commands.command()
     async def random(self, ctx, language: str = None):
         """
@@ -142,8 +152,8 @@ class Chat(commands.Cog):
 
         random_date = random.choice(os.listdir(f"Logs/{random_language}/"))
 
-        with open(f"./Logs/{random_language}/{random_date}", "r", encoding="utf-8", errors="replace") as file:
-            content = file.read().splitlines()
+        async with open(f"./Logs/{random_language}/{random_date}", "r", encoding="utf-8", errors="replace") as file:
+            content = (await file.read()).splitlines()
 
         msg = random.choice(content)
         msg_index = content.index(msg)
@@ -163,6 +173,7 @@ class Chat(commands.Cog):
             pass
 
 
+    @commands.cooldown(1, 3)
     @commands.command()
     async def chat(self, ctx, language, chatlimit: int = 10):
         """
@@ -174,8 +185,8 @@ class Chat(commands.Cog):
             return
 
         last_log_language = self.logs_in_language(language)[-1]
-        with open(f"./Logs/{language}/{last_log_language}", "r", encoding="utf-8", errors="replace") as file:
-            content = file.read().splitlines()[-chatlimit:]
+        async with open(f"./Logs/{language}/{last_log_language}", "r", encoding="utf-8", errors="replace") as file:
+            content = (await file.read()).splitlines()[-chatlimit:]
 
         chatmsg = "```"
         for line in content:
@@ -188,6 +199,7 @@ class Chat(commands.Cog):
             await ctx.send(err)
             
 
+    @commands.cooldown(1, 3)
     @commands.command()
     async def getrandom(self, ctx, player: fix_username, language: str):
         """ 
@@ -199,7 +211,7 @@ class Chat(commands.Cog):
 
         msg = await ctx.send(f"Searching {player}")
         for date in self.logs_in_language(language):
-            with open(f"./Logs/{language}/{date}", "r", encoding="utf-8", errors="replace") as file: 
+            async with open(f"./Logs/{language}/{date}", "r", encoding="utf-8", errors="replace") as file: 
                 for index, line in enumerate(file):
                     line = line.strip()
                     
@@ -229,8 +241,8 @@ class Chat(commands.Cog):
         random_message_id = random.choice(list(player_messages.keys()))
         random_message = player_messages[random_message_id]
 
-        with open(f"./Logs/{language}/{random_message['date']}", "r", encoding="utf-8", errors="replace") as file:
-            content_full = file.read().splitlines()
+        async with open(f"./Logs/{language}/{random_message['date']}", "r", encoding="utf-8", errors="replace") as file:
+            content_full = await (file.read()).splitlines()
 
         try:
             await msg.edit(
@@ -241,7 +253,8 @@ class Chat(commands.Cog):
             await msg.clear_reactions()
 
 
-    @commands.command()
+    @commands.cooldown(1, 3)
+    @commands.command(aliases=["get"])
     async def getuser(self, ctx, player: fix_username, language: str, limit=10):
         """
             Get user last messages
@@ -255,8 +268,8 @@ class Chat(commands.Cog):
         player_messages = []
         msg = await ctx.send(f"Searching messages of {player}")
         for log_file in reversed(self.logs_in_language(language)):
-            with open(f"./Logs/{language}/{log_file}", "r", encoding="utf-8", errors="replace") as file:
-                content = file.read().splitlines()
+            async with open(f"./Logs/{language}/{log_file}", "r", encoding="utf-8", errors="replace") as file:
+                content = (await file.read()).splitlines()
 
             for line in reversed(content):
                 try:
@@ -275,7 +288,7 @@ class Chat(commands.Cog):
                 break
 
         if len(player_messages) < 1:
-            await ctx.send(f"Can't find messages of {player}")
+            await msg.edit(content=f"Can't find messages of {player}")
             return
 
         chatmsg = "```"
@@ -288,6 +301,53 @@ class Chat(commands.Cog):
         except Exception as err:
             await msg.edit(content=err)
 
+
+    @commands.cooldown(1, 3)
+    @commands.command()
+    async def search(self, ctx, word: fix_username, language: str, limit=10):
+        """
+            Search word in logs
+        """
+
+        if language not in self.logs:
+            await ctx.send(f"Cant find {word} in logs")
+            return
+
+        msg = await ctx.send(f"Searching word contains {word}")
+        
+        user_messages = []
+        for log_file in reversed(self.logs_in_language(language)):
+            async with open(f"./Logs/{language}/{log_file}", "r", encoding="utf-8", errors="replace") as file:
+                content = (await file.read()).splitlines()
+
+            for line in reversed(content):
+                try:
+                    message = "".join(line.split(">")[1:])
+                except:
+                    continue
+
+                if await self.find_whole_word(word, message): 
+                    user_messages.append(line)
+
+                if len(user_messages) == limit:
+                    break
+
+            if len(user_messages) == limit:
+                break
+
+        if len(user_messages) < 1:
+            await msg.edit(content=f"Can't find message contains {word}")
+            return
+
+        chatmsg = "```"
+        for chat_msg in user_messages:
+            chatmsg += f"{chat_msg} \n"
+        chatmsg += "```"
+
+        try:
+            await msg.edit(content=chatmsg)
+        except Exception as err:
+            await msg.edit(content=err)
 
 
 def setup(bot):
