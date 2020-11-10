@@ -210,9 +210,10 @@ class Chat(commands.Cog):
         counter = 0
 
         msg = await ctx.send(f"Searching {player}")
-        for date in self.logs_in_language(language):
-            async with open(f"./Logs/{language}/{date}", "r", encoding="utf-8", errors="replace") as file: 
-                for index, line in enumerate(file):
+        for date in reversed(self.logs_in_language(language)):
+            async with open(f"./Logs/{language}/{date}", "r", encoding="utf-8", errors="replace") as file:
+                index = 0
+                async for line in file:
                     line = line.strip()
                     
                     try:
@@ -232,6 +233,7 @@ class Chat(commands.Cog):
                             "index": index,
                             "line": line
                         }
+                    index += 1
 
 
         if len(player_messages) < 1:
