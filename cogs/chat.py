@@ -4,6 +4,8 @@ import sqlite3
 import aiosqlite
 import random
 import asyncio
+import discord
+from collections import Counter
 from aiofiles import open
 from discord.ext import commands
 
@@ -244,7 +246,7 @@ class Chat(commands.Cog):
     @commands.command(aliases=["get"])
     async def getuser(self, ctx, player: fix_username, language: str, limit=10):
         """
-            Get user last messages
+            Get player last messages
         """
 
         async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
@@ -291,6 +293,49 @@ class Chat(commands.Cog):
             await ctx.send(content=chatmsg)
         except Exception as err:
             await ctx.send(content=err)
+
+
+    @commands.cooldown(1, 3)
+    @commands.command()
+    async def stats(self, ctx, player: fix_username, language: str):
+        """
+            Stats of player based on chat logs
+        """
+
+        async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
+            async with conn.execute(f"SELECT * FROM {language} WHERE username=? COLLATE NOCASE", (player,)) as cursor:
+                messages = (await cursor.fetchall())
+
+        if len(messages) < 1:
+            await ctx.send("Cant find player messages")
+            return
+
+        user_color = ctx.author.color
+        embed = discord.Embed(color=user_color)
+        embed.add_field(name="Message Count", value=len(messages), inline=True)
+
+        words = []
+        for message in messages:
+            for word in message[3].split():
+                if len(word) < 3:
+                    continue
+                
+                words.append(word)
+
+        counter = Counter(words)
+        most_occur = counter.most_common(3)
+
+        most_used_words_string = ""
+        for count, word in enumerate(most_occur):
+            word, counter = word
+            most_used_words_string += f"{count} - {word} ({counter})\n"
+
+        embed.add_field(name="Most Used Words", value=most_used_words_string, inline=True)
+
+        index, hour, username, message, date = random.choice(messages)
+        embed.add_field(name="Random Message", value=message, inline=False)
+
+        await ctx.send(embed=embed)
 
 
 def setup(bot):
