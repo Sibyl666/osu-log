@@ -1,5 +1,7 @@
 import os
 import re
+import sqlite3
+import aiosqlite
 import random
 import asyncio
 from aiofiles import open
@@ -7,8 +9,11 @@ from discord.ext import commands
 
 
 def fix_username(player: str) -> str:
-    player = re.escape(player)
-    return player.lower().replace("_", "").replace(" ", "_")
+    return player.replace("_", "").replace(" ", "_")
+
+
+def add_percent(word: str) -> str:
+    return f"%{word}%"
 
 
 class Chat(commands.Cog):
@@ -17,12 +22,9 @@ class Chat(commands.Cog):
 
 
     @property
-    def logs(self) -> list:
-        return [file for file in os.listdir("Logs/")]
-
-
-    def logs_in_language(self, language: str) -> list:
-        return os.listdir(f"./Logs/{language}/")
+    async def logs(self) -> list:
+        return ['announce', 'arabic', 'balkan', 'bulgarian', 'cantonese', 'chinese', 'ctb', 'czechoslovak', 'dutch', 'english', 'filipino', 'finnish', 'french', 'german', 'greek', 'hebrew', 
+'help', 'hungarian', 'indonesian', 'italian', 'japanese', 'korean', 'malaysian', 'modhelp', 'modreqs', 'osu', 'osumania', 'polish', 'portuguese', 'romanian', 'russian', 'skandinavian', 'spanish', 'taiko', 'thai', 'turkish', 'ukrainian', 'videogames', 'vietnamese']
 
 
     async def add_reaction(self, ctx, msg, content_length):
@@ -51,14 +53,14 @@ class Chat(commands.Cog):
         if index < 5:
             index = 5
 
+        async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
+            async with conn.execute(f"SELECT * FROM {language} LIMIT {index - 6}, 11") as cursor:
+                messages = await cursor.fetchall()
+
         chatmsg = "```"
-        async with open(f"./Logs/{language}/{date}", "r", encoding="utf-8", errors="replace") as file:
-            content = (await file.read()).splitlines()
-
-            messages = content[index - 5: index + 6]
-
-        for firsts in messages:
-            chatmsg += f"{firsts} \n"
+        for message in messages:
+            indexx, hour, username, message, date = message # assign stuff of message
+            chatmsg += f"{hour} {username}:{message} \n"
 
         chatmsg += "```"
 
@@ -68,6 +70,7 @@ class Chat(commands.Cog):
 
 
     async def add_reaction_scroll(self, ctx, index, language, context_msg, content_length, date):
+        startOfMessages = index - 5
         if content_length < 5:
             return
 
@@ -93,40 +96,41 @@ class Chat(commands.Cog):
 
             react_list = [reaction.emoji for reaction in reaction.message.reactions]
             if str(reaction.emoji) == "⏫":
-                index -= 4
+                startOfMessages -= 3
 
                 if "⏬" not in react_list:
-                    if not (index + 6) > content_length:
-                        await context_msg.clear_reactions()
-                        for react in reacts_emojis:
-                            await context_msg.add_reaction(react)
-
-                if index <= 5:
-                    index = 5
+                    await context_msg.clear_reactions()
+                    for react in reacts_emojis:
+                        await context_msg.add_reaction(react)
+                
+                if startOfMessages <= 0:
+                    startOfMessages = 0
                     await reaction.clear()
 
+                    
             elif str(reaction.emoji) == "⏬":
-                index += 4
-
+                startOfMessages += 3
+                
                 if "⏫" not in react_list:
-                    if not (index - 5) < 0:
-                        await context_msg.clear_reactions()
-                        for react in reacts_emojis:
-                            await context_msg.add_reaction(react)
-
-                if index >= content_length:
-                    index = content_length - 6
+                    await context_msg.clear_reactions()
+                    for react in reacts_emojis:
+                        await context_msg.add_reaction(react)
+                
+                if startOfMessages >= content_length:
+                    startOfMessages = content_length - 3
                     await reaction.clear()
+
+
+            async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
+                async with conn.execute(f"SELECT * FROM {language} LIMIT {startOfMessages}, 10") as cursor:
+                    messages = await cursor.fetchall()
 
             chatmsg = "```"
-            async with open(f"./Logs/{language}/{date}", "r", encoding="utf-8", errors="replace") as file:
-                content = (await file.read()).splitlines()
-                messages = content[index - 5: index + 6]
-
-            for firsts in messages:
-                chatmsg += f"{firsts} \n"
-
+            for message in messages:
+                index, hour, username, message, date = message
+                chatmsg += f"{hour} {username}:{message} \n"
             chatmsg += "```"
+
             await context_msg.edit(content=chatmsg)
 
 
@@ -138,7 +142,6 @@ class Chat(commands.Cog):
         return False
 
 
-    @commands.cooldown(1, 3)
     @commands.command()
     async def random(self, ctx, language: str = None):
         """
@@ -146,28 +149,31 @@ class Chat(commands.Cog):
         """
         
         if not language:
-            random_language = random.choice(self.logs)
+            random_language = random.choice(await self.logs)
         else:
             random_language = language
 
-        random_date = random.choice(os.listdir(f"Logs/{random_language}/"))
+        async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
+            async with conn.execute(f"SELECT * FROM {random_language} WHERE id IN (SELECT id FROM {random_language} ORDER BY RANDOM() LIMIT 1)") as cursor:
+                message = await cursor.fetchall()
 
-        async with open(f"./Logs/{random_language}/{random_date}", "r", encoding="utf-8", errors="replace") as file:
-            content = (await file.read()).splitlines()
+        index, hour, username, message, date = message[0] # assign stuff of message
 
-        msg = random.choice(content)
-        msg_index = content.index(msg)
+        if index < 5:
+            index = 5
 
-        if msg_index < 5:
-            msg_index = 5
-
-        chatmsg = f"```{msg_index} | {msg} \n```"
+        msg = f"{hour} {username}:{message}"
+        random_msg = f"```{index} | {msg} \n```"
 
         try:
             msg = await ctx.send(f"""
-            **Language**: {random_language}\n**Date**: {random_date}\n**Index**: {msg_index}\n{chatmsg}
+            **Language**: {random_language}\n**Date**: {date}\n**Index**: {index}\n{random_msg}
             """)
-            await self.add_reaction(ctx, msg, len(content))
+            async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
+                async with conn.execute(f"SELECT * FROM {random_language} ORDER BY id DESC LIMIT 1") as cursor:
+                    index, hour, username, message, date = (await cursor.fetchall())[0]
+
+            await self.add_reaction(ctx, msg, index)
         except:
 
             pass
@@ -180,17 +186,19 @@ class Chat(commands.Cog):
             Last 10 messages of given language chat
         """
         
-        if language not in self.logs:
+        if language not in await self.logs:
             await ctx.send("Cant find language | Example: #turkish")
             return
 
-        last_log_language = self.logs_in_language(language)[-1]
-        async with open(f"./Logs/{language}/{last_log_language}", "r", encoding="utf-8", errors="replace") as file:
-            content = (await file.read()).splitlines()[-chatlimit:]
-
+        async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
+            async with conn.execute(f"SELECT * FROM {language} ORDER BY id DESC limit {chatlimit}") as cursor:
+                messages = await cursor.fetchall()
+            
+        
         chatmsg = "```"
-        for line in content:
-            chatmsg += f"{line}\n"
+        for message in reversed(messages):
+            index, hour, username, message, date = message # assign stuff of message
+            chatmsg += f"{hour} {username}:{message}\n"
         chatmsg += "```"
 
         try:
@@ -201,55 +209,32 @@ class Chat(commands.Cog):
 
     @commands.cooldown(1, 3)
     @commands.command()
-    async def getrandom(self, ctx, player: fix_username, language: str):
+    async def getrandom(self, ctx, player: add_percent, language: str):
         """ 
             Get random message from given player
         """
 
-        player_messages = {}
-        counter = 0
+        async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
+            async with await conn.execute(f"SELECT * FROM {language} WHERE username LIKE ?", (player,)) as cursor:
+                messages = await cursor.fetchall()
 
-        msg = await ctx.send(f"Searching {player}")
-        for date in reversed(self.logs_in_language(language)):
-            async with open(f"./Logs/{language}/{date}", "r", encoding="utf-8", errors="replace") as file:
-                index = 0
-                async for line in file:
-                    line = line.strip()
-                    
-                    try:
-                        username = line.split(">")[0].split("<")[-1].strip().lower()
-                    except:
-                        continue
-
-                    if len(username) > 15:
-                        continue
-
-                    if player in username:
-                        counter += 1
-
-                        player_messages[str(counter)] = {
-                            "language": language,
-                            "date": date,
-                            "index": index,
-                            "line": line
-                        }
-                    index += 1
-
-
-        if len(player_messages) < 1:
-            await msg.edit(content=f"Cant find message from {player} :pensive:")
+        if len(messages) < 1:
+            await ctx.send(f"Can't find messages of {player}")
             return
 
-        random_message_id = random.choice(list(player_messages.keys()))
-        random_message = player_messages[random_message_id]
+        random_message = random.choice(messages) # Random message
+        index, hour, username, message, date = random_message # assign stuff of message
+        chatmsg = f"{hour} {username}:{message}"
 
-        async with open(f"./Logs/{language}/{random_message['date']}", "r", encoding="utf-8", errors="replace") as file:
-            content_full = await (file.read()).splitlines()
+        async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
+            async with conn.execute(f"SELECT * FROM {language} ORDER BY id DESC LIMIT 1") as cursor:
+                table_length = (await cursor.fetchone())[0]
+                print(table_length)
 
         try:
-            await msg.edit(
-                content=f"**Language**: {random_message['language']}\n**Date**: {random_message['date']}\n**Index**: {random_message['index']}\n```{random_message['line']}```")
-            await self.add_reaction(ctx, msg, len(content_full))
+            msg = await ctx.send(
+                f"**Language**: {language}\n**Date**: {date}\n**Index**: {index}\n```{chatmsg}```")
+            await self.add_reaction(ctx, msg, table_length)
         except Exception as err:
             await ctx.send(err)
             await msg.clear_reactions()
@@ -262,94 +247,50 @@ class Chat(commands.Cog):
             Get user last messages
         """
 
-        if language not in self.logs:
-            await ctx.send("Cant find language | Example: #turkish")
+        async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
+            async with conn.execute(f"SELECT message FROM {language} WHERE username=? COLLATE NOCASE", (player,)) as cursor:
+                messages = (await cursor.fetchall())[-limit:]
+
+        if len(messages) < 1:
+            await ctx.send(f"Can't find messages of {player}")
             return
-            
-        counter = 0
-        player_messages = []
-        msg = await ctx.send(f"Searching messages of {player}")
-        for log_file in reversed(self.logs_in_language(language)):
-            async with open(f"./Logs/{language}/{log_file}", "r", encoding="utf-8", errors="replace") as file:
-                content = (await file.read()).splitlines()
-
-            for line in reversed(content):
-                try:
-                    player_username = re.search(f"<.{player}>", line, re.IGNORECASE)
-                    if not player_username:
-                        continue
-                    player_messages.append(line)
-                    counter += 1
-                except:
-                    continue
-
-                if counter == limit:
-                    break
-
-            if counter == limit:
-                break
-
-        if len(player_messages) < 1:
-            await msg.edit(content=f"Can't find messages of {player}")
-            return
-
+        
         chatmsg = "```"
-        for message in reversed(player_messages):
-            chatmsg += f"{message} \n"
+        for message in reversed(messages):
+            chatmsg += f"{player}:{''.join(message)} \n"
         chatmsg += "```"
 
         try:
-            await msg.edit(content=chatmsg)
+            await ctx.send(content=chatmsg)
         except Exception as err:
-            await msg.edit(content=err)
+            await ctx.send(content=err)
 
 
     @commands.cooldown(1, 3)
     @commands.command()
-    async def search(self, ctx, word: fix_username, language: str, limit=10):
+    async def search(self, ctx, word: add_percent, language: str, limit: int=10):
         """
             Search word in logs
         """
 
-        if language not in self.logs:
-            await ctx.send(f"Cant find {word} in logs")
-            return
+        async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
+            async with conn.execute(f"SELECT * FROM {language} WHERE message LIKE ? LIMIT {limit}", (word,)) as cursor:
+                messages = await cursor.fetchall()
 
-        msg = await ctx.send(f"Searching word contains {word}")
-        
-        user_messages = []
-        for log_file in reversed(self.logs_in_language(language)):
-            async with open(f"./Logs/{language}/{log_file}", "r", encoding="utf-8", errors="replace") as file:
-                content = (await file.read()).splitlines()
-
-            for line in reversed(content):
-                try:
-                    message = "".join(line.split(">")[1:])
-                except:
-                    continue
-
-                if await self.find_whole_word(word, message): 
-                    user_messages.append(line)
-
-                if len(user_messages) == limit:
-                    break
-
-            if len(user_messages) == limit:
-                break
-
-        if len(user_messages) < 1:
-            await msg.edit(content=f"Can't find message contains {word}")
+        if len(messages) < 1:
+            await ctx.send(f"Can't find message contains {word}")
             return
 
         chatmsg = "```"
-        for chat_msg in user_messages:
-            chatmsg += f"{chat_msg} \n"
+        for message in messages:
+            index, hour, username, message, date = message # assign stuff of message
+            chatmsg += f"{hour} {username}:{message} \n"
         chatmsg += "```"
 
         try:
-            await msg.edit(content=chatmsg)
+            await ctx.send(content=chatmsg)
         except Exception as err:
-            await msg.edit(content=err)
+            await ctx.send(content=err)
 
 
 def setup(bot):
