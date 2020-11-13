@@ -1,5 +1,7 @@
 import json
 import discord
+import timeago
+from datetime import datetime
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont, ImageColor
 from matplotlib import pyplot as plt
@@ -12,6 +14,13 @@ from discord.ext import commands
 class osu(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.intervals = (
+            ('weeks', 604800),  # 60 * 60 * 24 * 7
+            ('days', 86400),  # 60 * 60 * 24
+            ('hours', 3600),  # 60 * 60
+            ('minutes', 60),
+            ('seconds', 1),
+        )
 
 
     def write_to_background(self, img, text_corner, text, font="Torus-SemiBold.otf", font_size=24, align="left", fill=None, center=False):
@@ -92,6 +101,45 @@ class osu(commands.Cog):
                 await ctx.send(content=f"Graph for {user_info['username']} | :blue_circle: :Play Count :yellow_circle: :Rank",
                                file=discord.File(fp=image_binary, filename=f"{player}_graph.png"))
                 plt.close()
+
+
+    def display_time(self, seconds, granularity=2):
+        result = []
+
+        for name, count in self.intervals:
+            value = seconds // count
+            if value:
+                seconds -= value * count
+                if value == 1:
+                    name = name.rstrip('s')
+                result.append("{} {}".format(value, name))
+        return ', '.join(result[:granularity])
+
+
+    def return_time_ago(self, date_muted):
+        date_muted_obj = datetime.strptime(date_muted[:-9], "%Y-%m-%dT%H:%M")
+
+        return timeago.format(date_muted_obj)
+
+
+    @commands.command(aliases=["silence"])
+    async def mute(self, ctx, player):
+        player = player.replace("_", " ").replace(" ", "_")
+
+        user_details = await self.user_details_website(player)
+        if not user_details:
+            await ctx.send(f"{player} oyuncusunu bulamadım :pensive:")
+            return
+
+        embed = discord.Embed()
+        embed.set_author(name=f"{user_details['username']}'s mute stats",
+                            icon_url=f"https://a.ppy.sh/{user_details['id']}")
+        embed.add_field(name="Muted rn", value=user_details["is_silenced"], inline=False)
+        for mutes in user_details["account_history"]:
+            embed.add_field(name=f"{mutes['description']} | {self.return_time_ago(mutes['timestamp'])}",
+                            value=f"Length: {self.display_time(mutes['length'])}")
+
+        await ctx.send(embed=embed)
 
 
 def setup(bot):
