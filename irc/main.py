@@ -77,7 +77,8 @@ async def main():
                 if not "PRIVMSG" in splitted_message[1]:
                     continue
 
-                match = re.search(":(?P<username>.{1,15})!cho@ppy.sh PRIVMSG (?P<channel>#.*) (?P<message>\:.*)", message)
+                match = re.search(r":(?P<username>.{1,15})!cho@ppy.sh PRIVMSG (?P<table>#[^\s]+) (?P<message>:.*)", message)
+                print(match)
                 if match:
                     username, table, message = match.groups()
                     table = table.replace("#", "")
@@ -87,9 +88,15 @@ async def main():
                     hour = f"{now.hour}:{now.minute}"
                     date = now.strftime("%Y-%m-%d")
                 
-                    async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
-                        async with await conn.execute(f"INSERT INTO {table} (hour, username, message, date) VALUES (?,?,?,?)", (hour, username, message, date)) as cursor:
-                            await conn.commit()
+                    try:
+                        async with aiosqlite.connect("../Logs/Chatlogs.db") as conn:
+                            async with await conn.execute(f"INSERT INTO {table} (hour, username, message, date) VALUES (?,?,?,?)", (hour, username, message, date)) as cursor:
+                                await conn.commit()
+                                logging.info(f"Added {match}")
+                    except Exception as err:
+                        print(match)
+                        print(username, table, message, now, hour, date)
+                        logging.exception("Cant add to database")
 
             except:
                 continue
