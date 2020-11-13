@@ -9,7 +9,7 @@ from aiohttp import ClientSession
 from discord.ext import commands
 
 
-class Chat(commands.Cog):
+class osu(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -95,4 +95,4 @@ class Chat(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(Chat(bot))
+    bot.add_cog(osu(bot))

@@ -18,7 +18,7 @@ def add_percent(word: str) -> str:
     return f"%{word}%"
 
 
-class osu(commands.Cog):
+class Chat(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -339,4 +339,4 @@ class osu(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(osu(bot))
+    bot.add_cog(Chat(bot))
