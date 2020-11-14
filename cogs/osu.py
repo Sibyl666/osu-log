@@ -47,16 +47,17 @@ class osu(commands.Cog):
     @commands.command(aliases=["grp"])
     @commands.cooldown(1, 2)
     async def graph(self, ctx, *player):
-        players = [player.lower() for player in player]
+        players = [player.lower().replace("_", " ") for player in player]
         players = list(set(players))
+
         if len(players) > 5:
-            await ctx.send("Çok player veriyon azalt :pensive:")
+            await ctx.send("Given players are too much max limit is 5")
             return
 
         for player in players:
             user_info = await self.user_details_website(player)
             if not user_info:
-                await ctx.send("Oyuncuyu bulamadım :pensive:")
+                await ctx.send("Can't find player")
                 return
 
             rank_history = user_info["rankHistory"]["data"]
