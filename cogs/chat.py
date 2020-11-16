@@ -231,7 +231,6 @@ class Chat(commands.Cog):
         async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
             async with conn.execute(f"SELECT * FROM {language} ORDER BY id DESC LIMIT 1") as cursor:
                 table_length = (await cursor.fetchone())[0]
-                print(table_length)
 
         try:
             msg = await ctx.send(
