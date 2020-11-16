@@ -86,12 +86,11 @@ class osu(commands.Cog):
 
             style = {
                 "size": 10,
-                "color": "#4287f5",
-                "fontfamily": "Arial",
+                "color": "#267aff",
                 "fontweight": "bold"
             }
             for index, value in enumerate(play_counts):
-                ax2.text(index, value+20, str(value), **style)
+                ax2.text(index, value+6, str(value), **style)
 
             sio = BytesIO()
             canvas = FigureCanvas(plt.gcf())
