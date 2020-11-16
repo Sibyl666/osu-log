@@ -5,7 +5,9 @@ from datetime import datetime
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont, ImageColor
 from matplotlib import pyplot as plt
+from matplotlib.text import Annotation
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.font_manager import FontProperties
 from bs4 import BeautifulSoup
 from aiohttp import ClientSession
 from discord.ext import commands
@@ -81,6 +83,15 @@ class osu(commands.Cog):
             ax2 = fig.add_axes([.1, .1, .80, .80], label="Play Count", frame_on=False)
             ax2.axis("off")
             ax2.plot(length_play_counts, play_counts, linewidth=3, color="#4287f5")  # Play Count plot
+
+            style = {
+                "size": 10,
+                "color": "#4287f5",
+                "fontfamily": "Arial",
+                "fontweight": "bold"
+            }
+            for index, value in enumerate(play_counts):
+                ax2.text(index, value+20, str(value), **style)
 
             sio = BytesIO()
             canvas = FigureCanvas(plt.gcf())
