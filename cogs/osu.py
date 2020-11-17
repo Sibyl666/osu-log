@@ -49,7 +49,7 @@ class osu(commands.Cog):
     @commands.command(aliases=["grp"])
     @commands.cooldown(1, 2)
     async def graph(self, ctx, *player):
-        players = [player.lower().replace("_", " ") for player in player]
+        players = [player.lower() for player in player]
         players = list(set(players))
 
         if len(players) > 5:
