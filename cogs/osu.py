@@ -43,7 +43,7 @@ class osu(commands.Cog):
 
                 soup = BeautifulSoup(await resp.text(), "html.parser")
                 user_info = json.loads(soup.find(id="json-user").string)
-                return user_info
+        return user_info
 
 
     @commands.command(aliases=["grp"])
