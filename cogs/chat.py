@@ -221,7 +221,7 @@ class Chat(commands.Cog):
                 messages = await cursor.fetchall()
 
         if len(messages) < 1:
-            await ctx.send(f"Can't find messages of {player}")
+            await ctx.send(f"Can't find messages of {player.replace('%', '')}")
             return
 
         random_message = random.choice(messages) # Random message
@@ -250,7 +250,10 @@ class Chat(commands.Cog):
 
         async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
             async with conn.execute(f"SELECT message FROM {language} WHERE username=? COLLATE NOCASE", (player,)) as cursor:
-                messages = (await cursor.fetchall())[-limit:]
+                if limit < 0:
+                    messages = (await cursor.fetchall())[:limit]
+                else:
+                    messages = (await cursor.fetchall())[-limit:]
 
         if len(messages) < 1:
             await ctx.send(f"Can't find messages of {player}")

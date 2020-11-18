@@ -25,7 +25,7 @@ class osu(commands.Cog):
         )
 
 
-    def write_to_background(self, img, text_corner, text, font="Torus-SemiBold.otf", font_size=24, align="left", fill=None, center=False):
+    def write_to_background(self, img, text_corner, text, font="BebasNeue-Regular.ttf", font_size=24, align="left", fill=None, center=False):
         font = ImageFont.truetype(f"./Stuff/{font}", font_size)
         draw = ImageDraw.Draw(img)
         if center:
@@ -84,28 +84,35 @@ class osu(commands.Cog):
             ax2.axis("off")
             ax2.plot(length_play_counts, play_counts, linewidth=3, color="#4287f5")  # Play Count plot
 
-            style = {
-                "size": 10,
-                "color": "#267aff",
-                "fontweight": "bold"
-            }
-            for index, value in enumerate(play_counts):
-                ax2.text(index, value+6, str(value), **style)
-
             sio = BytesIO()
             canvas = FigureCanvas(plt.gcf())
             canvas.print_png(sio)
 
             image_binary = sio.getvalue()
             graph_img = Image.open(BytesIO(image_binary)).convert("RGBA")
-            graph_img = graph_img.crop((120, 10, 890, 180))
+            graph_img = graph_img.crop((110, 10, 890, 180))
 
             # Write rank to left bottom or up
             txt = Image.new("RGBA", graph_img.size, (255, 255, 255, 0))
             self.write_to_background(txt, (7, 10), f"#{user_info['statistics']['rank']['global']}",
-                                         font="BebasNeue-Regular.ttf",font_size=150, fill=(0, 0, 0, 70), center=True)
-            graph_img = Image.alpha_composite(graph_img, txt)
+                                        font_size=150, fill=(0, 0, 0, 70), center=True)
 
+
+            draw = ImageDraw.Draw(txt)
+            font = ImageFont.truetype(f"./Stuff/BebasNeue-Regular.ttf", 34)
+
+            # Play count texts
+            # Left
+            draw.text((20, 138), str(play_counts[0]), font=font, fill=(13, 94, 222))
+            # Center
+            w, h = font.getsize(str(play_counts[1]))
+            draw.text(( (770-w) / 2  ,138), str(play_counts[1]), font=font, fill=(13, 94, 222))
+            #Right
+            w, h = font.getsize(str(play_counts[2]))
+            draw.text((770-w, 138), str(play_counts[2]), font=font, fill=(13, 94, 222))
+
+
+            graph_img = Image.alpha_composite(graph_img, txt)
             with BytesIO() as image_binary:
                 graph_img.save(image_binary, "png")
                 image_binary.seek(0)
