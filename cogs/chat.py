@@ -5,6 +5,7 @@ import aiosqlite
 import random
 import asyncio
 import discord
+import itertools
 from collections import Counter
 from aiofiles import open
 from discord.ext import commands
@@ -247,11 +248,15 @@ class Chat(commands.Cog):
         """
             Get player last messages
         """
+        conn = sqlite3.connect("./irc/Logs/Chatlogs.db")
+        c = conn.cursor()
+        messages = c.execute(f"SELECT message FROM {language} WHERE username=? COLLATE NOCASE", (player,)).fetchall()
 
-        async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
+        async with aiosqlite.connect("./irc/Logs/Chatlogs.db") as conn:
             async with conn.execute(f"SELECT message FROM {language} WHERE username=? COLLATE NOCASE", (player,)) as cursor:
                 if limit < 0:
-                    messages = (await cursor.fetchall())[:limit]
+                    messages = (await cursor.fetchall())[:abs(limit)]
+                    messages.reverse()
                 else:
                     messages = (await cursor.fetchall())[-limit:]
 
