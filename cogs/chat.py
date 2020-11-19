@@ -12,7 +12,7 @@ from discord.ext import commands
 
 
 def fix_username(player: str) -> str:
-    return player.replace("_", "").replace(" ", "_")
+    return player.replace(" ", "_")
 
 
 def add_percent(word: str) -> str:
