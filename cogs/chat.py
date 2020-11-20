@@ -6,8 +6,8 @@ import random
 import asyncio
 import discord
 import itertools
+from io import StringIO
 from collections import Counter
-from aiofiles import open
 from discord.ext import commands
 
 
@@ -343,6 +343,27 @@ class Chat(commands.Cog):
         embed.add_field(name="Random Message", value=message, inline=False)
 
         await ctx.send(embed=embed)
+
+
+    @commands.cooldown(1, 10)
+    @commands.command()
+    async def log(self, ctx, date: str, language: str):
+        async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
+            async with conn.execute(f"SELECT * FROM {language} WHERE date='{date}'") as cursor:
+                messages = (await cursor.fetchall())
+        
+        if len(messages) < 1:
+            await ctx.send("Can't find messages :pensive:")
+            return
+
+        file_string = ""
+        for message in messages:
+            msgid, hour, username, message, date = message
+            file_string += f"{hour} {username} :{message}\n"
+            
+        with StringIO(file_string) as stream_str:
+            await ctx.send(file=discord.File(stream_str, filename=f"{date}.log"))
+
 
 
 def setup(bot):
