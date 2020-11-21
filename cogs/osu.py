@@ -1,6 +1,7 @@
 import json
 import discord
 import timeago
+import aiosqlite
 from datetime import datetime
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont, ImageColor
@@ -52,6 +53,14 @@ class osu(commands.Cog):
         players = [player.lower() for player in player]
         players = list(set(players))
 
+        if len(player) < 1:
+            async with aiosqlite.connect("./Logs/Settings.db") as db:
+                async with db.execute(f"SELECT * FROM users WHERE discord_id={ctx.author.id}") as cursor:
+                    player = await cursor.fetchone()
+                    if player is None:
+                        return
+                    players.append(player[2])
+                    
         if len(players) > 5:
             await ctx.send("Given players are too much max limit is 5")
             return
@@ -141,21 +150,34 @@ class osu(commands.Cog):
 
 
     @commands.command(aliases=["silence"])
-    async def mute(self, ctx, player):
-        player = player.replace("_", " ").replace(" ", "_")
-
+    async def mute(self, ctx, *, player=None):
+        if player is None:
+            async with aiosqlite.connect("./Logs/Settings.db") as db:
+                async with db.execute(f"SELECT osu_username FROM users WHERE discord_id={ctx.author.id}") as cursor:
+                    player = await cursor.fetchone()
+                    if player is None:
+                        await ctx.send("Player is a required argument that is missing")
+                        return
+                    player = player[0]
+                    
         user_details = await self.user_details_website(player)
         if not user_details:
             await ctx.send(f"{player} oyuncusunu bulamadım :pensive:")
             return
 
         embed = discord.Embed()
-        embed.set_author(name=f"{user_details['username']}'s mute stats",
+        embed.set_author(name=f"{user_details['username']}'s mute info",
                             icon_url=f"https://a.ppy.sh/{user_details['id']}")
-        embed.add_field(name="Muted rn", value=user_details["is_silenced"], inline=False)
+
+        if user_details["is_silenced"]:
+            user_details["is_silenced"] = "Yes"
+        else:
+            user_details["is_silenced"] = "No"
+
+        embed.add_field(name="Muted right now?", value=user_details["is_silenced"], inline=False)
         for mutes in user_details["account_history"]:
             embed.add_field(name=f"{mutes['description']} | {self.return_time_ago(mutes['timestamp'])}",
-                            value=f"Length: {self.display_time(mutes['length'])}")
+                            value=f"**Length**: {self.display_time(mutes['length'])}")
 
         await ctx.send(embed=embed)
 
