@@ -85,7 +85,7 @@ async def main():
                     message = message.replace(":", " ", 1)
 
                     now = datetime.utcnow()
-                    hour = f"{now.hour}:{now.minute}"
+                    hour = now.strftime("%H:%M")
                     date = now.strftime("%Y-%m-%d")
                 
                     try:
