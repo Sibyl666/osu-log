@@ -16,7 +16,8 @@ def fix_username(player: str) -> str:
 
 
 def add_percent(player: str) -> str:
-    return f"%{player}%"
+    if not player is None:
+        return f"%{player}%"
 
 
 class Chat(commands.Cog):
@@ -190,13 +191,26 @@ class Chat(commands.Cog):
         """
             Last 10 messages of given language chat
         """
+
+        try:
+            chatlimit = int(language)
+            async with aiosqlite.connect("./Logs/Settings.db") as db:
+                async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
+                    language = await cursor.fetchone()
+                    language = language[0]
+        except:
+            pass
         
         if language is None:
             async with aiosqlite.connect("./Logs/Settings.db") as db:
                 async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
                     language = await cursor.fetchone()
                     if language is None:
-                        raise Exception("language is a required argument that is missing.")
+                        embed = discord.Embed(description="You don't need language if server has default language\nLooks like this server doesn't have default")
+                        embed.set_author(name="Help Menu")
+                        embed.add_field(name="Example", value="```%chat turkish 30```")
+                        await ctx.send("Language is a required argument that is missing.", embed=embed)
+                        return
                     language = language[0]
                 
         async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
@@ -228,7 +242,12 @@ class Chat(commands.Cog):
                 async with db.execute(f"SELECT * FROM users WHERE discord_id={ctx.author.id}") as cursor:
                     player = await cursor.fetchone()
                     if player is None:
-                        raise Exception("player is a required argument that is missing.")
+                        embed = discord.Embed(description="You have to specify player if you didn't set one")
+                        embed.set_author(name="Help Menu")
+                        embed.add_field(name="Example", value="```%getrandom Sibyl turkish```")
+                        embed.add_field(name="Set user", value="```%osuset Sibyl```")
+                        await ctx.send("player is a required argument that is missing.", embed=embed)
+                        return
                     discord_id, player, osu_id = player
 
         if language is None: # check language if server has default
@@ -236,7 +255,12 @@ class Chat(commands.Cog):
                 async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
                     language = await cursor.fetchone()
                     if language is None:
-                        raise Exception("language is a required argument that is missing.")
+                        embed = discord.Embed(description="You have to specify language if server doesn't have default one")
+                        embed.set_author(name="Help Menu")
+                        embed.add_field(name="Example", value="```%getrandom Sibyl turkish``")
+                        embed.add_field(name="Set server default", value="```%setserverdefault turkish```")
+                        await ctx.send("Language is a required argument that is missing.", embed=embed)
+                        return
                     language = language[0]
 
         async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
@@ -271,12 +295,26 @@ class Chat(commands.Cog):
             Get player last messages
         """
 
+        try:
+            limit = int(language)
+            async with aiosqlite.connect("./Logs/Settings.db") as db:
+                async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
+                    language = await cursor.fetchone()
+                    language = language[0]
+        except:
+            pass
+
         if player is None: # check database if user has default
             async with aiosqlite.connect("./Logs/Settings.db") as db:
                 async with db.execute(f"SELECT * FROM users WHERE discord_id={ctx.author.id}") as cursor:
                     player = await cursor.fetchone()
                     if player is None:
-                        raise Exception("player is a required argument that is missing.")
+                        embed = discord.Embed(description="You have to specify player if you didn't set one")
+                        embed.set_author(name="Help Menu")
+                        embed.add_field(name="Example", value="```%getuser Sibyl turkish 30```")
+                        embed.add_field(name="Set user", value="```%osuset Sibyl```")
+                        await ctx.send("Player is a required argument that is missing.", embed=embed)
+                        return
                     discord_id, player, osu_id = player
 
         if language is None: # check language if server has default
@@ -284,7 +322,12 @@ class Chat(commands.Cog):
                 async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
                     language = await cursor.fetchone()
                     if language is None:
-                        raise Exception("language is a required argument that is missing.")
+                        embed = discord.Embed(description="You have to specify language if server doesn't have default one")
+                        embed.set_author(name="Help Menu")
+                        embed.add_field(name="Example", value="```%getuser Sibyl turkish 30```")
+                        embed.add_field(name="Set server default", value="```%setserverdefault turkish```")
+                        await ctx.send("Language is a required argument that is missing.", embed=embed)
+                        return
                     language = language[0]
 
 
@@ -297,11 +340,11 @@ class Chat(commands.Cog):
                     messages = (await cursor.fetchall())[-limit:]
 
         if len(messages) < 1:
-            await ctx.send(f"Can't find messages of {player}")
+            await ctx.send(f"Can't find messages of {player} in {language}")
             return
         
         chatmsg = "```"
-        for message in reversed(messages):
+        for message in messages:
             chatmsg += f"{player}:{''.join(message)} \n"
         chatmsg += "```"
 
@@ -313,17 +356,39 @@ class Chat(commands.Cog):
 
     @commands.cooldown(1, 3)
     @commands.command()
-    async def search(self, ctx, word: add_percent, language: str = None, limit: int=10):
+    async def search(self, ctx, word: add_percent = None, language: str = None, limit: int=10):
         """
             Search word in logs
         """
+        
+        try:
+            limit = int(language)
+            async with aiosqlite.connect("./Logs/Settings.db") as db:
+                async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
+                    language = await cursor.fetchone()
+                    language = language[0]
+        except:
+            pass
+
+        if word is None:
+            embed = discord.Embed(description="You have to specify language if server doesn't have default one")
+            embed.set_author(name="Help Menu")
+            embed.add_field(name="Example", value="```%search \"Search stuff\" turkish 10```")
+            embed.add_field(name="Set server default", value="```%setserverdefault turkish```")
+            await ctx.send("Word is a required argument that is missing.", embed=embed)
+            return
 
         if language is None: # check language if server has default
             async with aiosqlite.connect("./Logs/Settings.db") as db:
                 async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
                     language = await cursor.fetchone()
                     if language is None:
-                        raise Exception("language is a required argument that is missing.")
+                        embed = discord.Embed(description="You have to specify language if server doesn't have default one")
+                        embed.set_author(name="Help Menu")
+                        embed.add_field(name="Example", value="```%search \"Search stuff\" turkish 10```")
+                        embed.add_field(name="Set server default", value="```%setserverdefault turkish```")
+                        await ctx.send("Language is a required argument that is missing.", embed=embed)
+                        return
                     language = language[0]
 
         async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
@@ -358,7 +423,11 @@ class Chat(commands.Cog):
                 async with db.execute(f"SELECT * FROM users WHERE discord_id={ctx.author.id}") as cursor:
                     player = await cursor.fetchone()
                     if player is None:
-                        raise Exception("player is a required argument that is missing.")
+                        embed = discord.Embed(description="You have to specify player if you didn't set one")
+                        embed.set_author(name="Help Menu")
+                        embed.add_field(name="Example", value="```%stats Sibyl turkish```")
+                        await ctx.send("Player is a required argument that is missing.", embed=embed)
+                        return
                     discord_id, player, osu_id = player
 
         if language is None: # check language if server has default
@@ -366,7 +435,11 @@ class Chat(commands.Cog):
                 async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
                     language = await cursor.fetchone()
                     if language is None:
-                        raise Exception("language is a required argument that is missing.")
+                        embed = discord.Embed(description="You have to specify language if server doesn't have default one")
+                        embed.set_author(name="Help Menu")
+                        embed.add_field(name="Example", value="```%stats Sibyl turkish```")
+                        await ctx.send("Language is a required argument that is missing.", embed=embed)
+                        return
                     language = language[0]
 
         async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:

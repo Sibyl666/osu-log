@@ -82,7 +82,7 @@ async def main():
                 if match:
                     username, table, message = match.groups()
                     table = table.replace("#", "")
-                    message = message.replace(":", " ", 1)
+                    message = message.replace(":", "", 1)
 
                     now = datetime.utcnow()
                     hour = now.strftime("%H:%M")
