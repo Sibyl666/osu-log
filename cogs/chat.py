@@ -267,7 +267,7 @@ class Chat(commands.Cog):
 
         if player is None: # check database if user has default
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id)) as cursor:
+                async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id,)) as cursor:
                     player = await cursor.fetchone()
                     if player is None:
                         embed = discord.Embed(description="You have to specify player if you didn't set one")
@@ -337,7 +337,7 @@ class Chat(commands.Cog):
 
         if player is None: # check database if user has default
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id)) as cursor:
+                async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id,)) as cursor:
                     player = await cursor.fetchone()
                     if player is None:
                         embed = discord.Embed(description="You have to specify player if you didn't set one")
@@ -457,7 +457,7 @@ class Chat(commands.Cog):
 
         if player is None: # check database if user has default
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id)) as cursor:
+                async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id,)) as cursor:
                     player = await cursor.fetchone()
                     if player is None:
                         embed = discord.Embed(description="You have to specify player if you didn't set one")

@@ -55,7 +55,7 @@ class osu(commands.Cog):
 
         if len(player) < 1:
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT * FROM users WHERE discord_id={ctx.author.id}") as cursor:
+                async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id,)) as cursor:
                     player = await cursor.fetchone()
                     if player is None:
                         return
@@ -153,7 +153,7 @@ class osu(commands.Cog):
     async def mute(self, ctx, *, player=None):
         if player is None:
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT osu_username FROM users WHERE discord_id={ctx.author.id}") as cursor:
+                async with db.execute(f"SELECT osu_username FROM users WHERE discord_id=?", (ctx.author.id,)) as cursor:
                     player = await cursor.fetchone()
                     if player is None:
                         await ctx.send("Player is a required argument that is missing")

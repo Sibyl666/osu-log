@@ -43,7 +43,7 @@ class settings(commands.Cog):
             return
 
         async with aiosqlite.connect("./Logs/Settings.db") as db:
-            async with db.execute(f"SELECT * FROM users WHERE discord_id={ctx.author.id}") as cursor:
+            async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id,)) as cursor:
                 player = await cursor.fetchone()
                 if player is None: # Player doesn't have record. Create new
                     await db.execute("INSERT INTO users(discord_id, osu_username, osu_id) VALUES (?,?,?)", (ctx.author.id, user["username"], user["user_id"]))
@@ -51,7 +51,7 @@ class settings(commands.Cog):
                     await ctx.send(f"Added {user['username']} as {ctx.author.name}'s profile")
                 else: # Player has record. Update it
                     discord_id, osu_username, osu_id = player
-                    await db.execute(f"UPDATE users SET osu_username='{user['username']}', osu_id='{user['user_id']}' WHERE discord_id='{ctx.author.id}' ")
+                    await db.execute(f"UPDATE users SET osu_username=?, osu_id=? WHERE discord_id=? ", (user["username"], user["user_id"], ctx.author.id,))
                     await db.commit()
                     await ctx.send(f"Updated {ctx.author.name}'s profile {osu_username} to {user['username']}")
 
@@ -60,11 +60,11 @@ class settings(commands.Cog):
     @commands.command()
     async def setserverdefault(self, ctx, language): # ToDo: check if table exists
         if not language in self.logs:
-            await ctx.send("Cant find language :pensive:")
+            await ctx.send(f"Cant find {language} in languages :pensive:")
             return
 
         async with aiosqlite.connect("./Logs/Settings.db") as db:
-            async with db.execute(f"SELECT * FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
+            async with db.execute(f"SELECT * FROM guilds WHERE guild_id=?", (ctx.guild.id,)) as cursor:
                 guild = await cursor.fetchone()
                 if guild is None:
                     # Insert here (new record)
@@ -73,7 +73,7 @@ class settings(commands.Cog):
                     await ctx.send(f"default language of {ctx.guild.name} is now {language}")
                 else:
                     guild_id, language_sql = guild
-                    await db.execute(f"UPDATE guilds SET language='{language}' WHERE guild_id='{guild_id}' ")
+                    await db.execute(f"UPDATE guilds SET language=? WHERE guild_id=?", (language, guild_id,))
                     await db.commit()
                     await ctx.send(f"Updated server default language to {language}")
             
