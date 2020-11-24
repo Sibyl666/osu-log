@@ -159,7 +159,7 @@ class Chat(commands.Cog):
         elif player not in self.logs: # player given
             if language is None: # player given, language didn't. Select default language
                 async with aiosqlite.connect("./Logs/Settings.db") as db:
-                    async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
+                    async with db.execute(f"SELECT language FROM guilds WHERE guild_id=?", (ctx.guild.id,)) as cursor:
                         language = await cursor.fetchone()
                         if language is None: # can't find default language.
                             embed = discord.Embed(description="You have to specify language if server doesn't have default one")
@@ -220,7 +220,7 @@ class Chat(commands.Cog):
         try:
             chatlimit = int(language)
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
+                async with db.execute(f"SELECT language FROM guilds WHERE guild_id=?", (ctx.guild.id,)) as cursor:
                     language = await cursor.fetchone()
                     language = language[0]
         except:
@@ -228,7 +228,7 @@ class Chat(commands.Cog):
         
         if language is None:
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
+                async with db.execute(f"SELECT language FROM guilds WHERE guild_id=?", (ctx.guild.id,)) as cursor:
                     language = await cursor.fetchone()
                     if language is None:
                         embed = discord.Embed(description="You don't need language if server has default language\nLooks like this server doesn't have default")
@@ -267,7 +267,7 @@ class Chat(commands.Cog):
 
         if player is None: # check database if user has default
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT * FROM users WHERE discord_id={ctx.author.id}") as cursor:
+                async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id)) as cursor:
                     player = await cursor.fetchone()
                     if player is None:
                         embed = discord.Embed(description="You have to specify player if you didn't set one")
@@ -280,7 +280,7 @@ class Chat(commands.Cog):
 
         if language is None: # check language if server has default
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
+                async with db.execute(f"SELECT language FROM guilds WHERE guild_id=?", (ctx.guild.id,)) as cursor:
                     language = await cursor.fetchone()
                     if language is None:
                         embed = discord.Embed(description="You have to specify language if server doesn't have default one")
@@ -329,7 +329,7 @@ class Chat(commands.Cog):
         try:
             limit = int(language)
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
+                async with db.execute(f"SELECT language FROM guilds WHERE guild_id=?", (ctx.guild.id,)) as cursor:
                     language = await cursor.fetchone()
                     language = language[0]
         except:
@@ -337,7 +337,7 @@ class Chat(commands.Cog):
 
         if player is None: # check database if user has default
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT * FROM users WHERE discord_id={ctx.author.id}") as cursor:
+                async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id)) as cursor:
                     player = await cursor.fetchone()
                     if player is None:
                         embed = discord.Embed(description="You have to specify player if you didn't set one")
@@ -350,7 +350,7 @@ class Chat(commands.Cog):
 
         if language is None: # check language if server has default
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
+                async with db.execute(f"SELECT language FROM guilds WHERE guild_id=?", (ctx.guild.id,)) as cursor:
                     language = await cursor.fetchone()
                     if language is None:
                         embed = discord.Embed(description="You have to specify language if server doesn't have default one")
@@ -398,7 +398,7 @@ class Chat(commands.Cog):
         try:
             limit = int(language)
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
+                async with db.execute(f"SELECT language FROM guilds WHERE guild_id=?", (ctx.guild.id,)) as cursor:
                     language = await cursor.fetchone()
                     language = language[0]
         except:
@@ -414,7 +414,7 @@ class Chat(commands.Cog):
 
         if language is None: # check language if server has default
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
+                async with db.execute(f"SELECT language FROM guilds WHERE guild_id=?", (ctx.guild.id,)) as cursor:
                     language = await cursor.fetchone()
                     if language is None:
                         embed = discord.Embed(description="You have to specify language if server doesn't have default one")
@@ -457,7 +457,7 @@ class Chat(commands.Cog):
 
         if player is None: # check database if user has default
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT * FROM users WHERE discord_id={ctx.author.id}") as cursor:
+                async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id)) as cursor:
                     player = await cursor.fetchone()
                     if player is None:
                         embed = discord.Embed(description="You have to specify player if you didn't set one")
@@ -469,7 +469,7 @@ class Chat(commands.Cog):
 
         if language is None: # check language if server has default
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
+                async with db.execute(f"SELECT language FROM guilds WHERE guild_id=?", (ctx.guild.id,)) as cursor:
                     language = await cursor.fetchone()
                     if language is None:
                         embed = discord.Embed(description="You have to specify language if server doesn't have default one")
@@ -522,7 +522,7 @@ class Chat(commands.Cog):
     async def log(self, ctx, date: str, language: str = None):
         if language is None: # check language if server has default
             async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
+                async with db.execute(f"SELECT language FROM guilds WHERE guild_id=?", (ctx.guild.id,)) as cursor:
                     language = await cursor.fetchone()
                     if language is None:
                         raise Exception("language is a required argument that is missing.")
