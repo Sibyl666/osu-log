@@ -147,24 +147,49 @@ class Chat(commands.Cog):
 
 
     @commands.command()
-    async def random(self, ctx, language: str = None):
+    async def random(self, ctx, player:str = None, language: str = None):
         """
             Gets Random Message
         """
-        
-        if language is None:
-            random_language = random.choice(self.logs)
-        else:
+        if player is None and language is None: # Nothing given select random player and language
+            language = random.choice(self.logs)
+            async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
+                async with conn.execute(f"SELECT * FROM {language} WHERE id IN (SELECT id FROM {language} ORDER BY RANDOM() LIMIT 1)") as cursor:
+                    message = (await cursor.fetchall())[0]
+        elif player not in self.logs: # player given
+            if language is None: # player given, language didn't. Select default language
+                async with aiosqlite.connect("./Logs/Settings.db") as db:
+                    async with db.execute(f"SELECT language FROM guilds WHERE guild_id={ctx.guild.id}") as cursor:
+                        language = await cursor.fetchone()
+                        if language is None: # can't find default language.
+                            embed = discord.Embed(description="You have to specify language if server doesn't have default one")
+                            embed.set_author(name="Help Menu")
+                            embed.add_field(name="Example", value="```%random sibyl turkish```")
+                            embed.add_field(name="Set server default", value="```%setserverdefault turkish```")
+                            await ctx.send("Language is a required argument that is missing.", embed=embed)
+                            return
+                        language = language[0]
+
+            async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
+                async with await conn.execute(f"SELECT * FROM {language} WHERE username LIKE ?", (f"%{player}%",)) as cursor:
+                    messages = await cursor.fetchall()
+                    
+                    if len(messages) < 1:
+                        await ctx.send(f"Can't find messages of {player.replace('%', '')} in {language}")
+                        return
+
+                    message = random.choice(messages) # Random message
+        else: # language given
+            language = player
             if language not in self.logs:
-                await ctx.send(f"Can't find {language}")
+                await ctx.send(f"Can't find {language} in languages")
                 return
-            random_language = language
 
-        async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
-            async with conn.execute(f"SELECT * FROM {random_language} WHERE id IN (SELECT id FROM {random_language} ORDER BY RANDOM() LIMIT 1)") as cursor:
-                message = await cursor.fetchall()
+            async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
+                async with conn.execute(f"SELECT * FROM {language} WHERE id IN (SELECT id FROM {language} ORDER BY RANDOM() LIMIT 1)") as cursor:
+                    message = (await cursor.fetchall())[0]
 
-        index, hour, username, message, date = message[0] # assign stuff of message
+        index, hour, username, message, date = message # assign stuff of message
 
         if index < 5:
             index = 5
@@ -174,10 +199,10 @@ class Chat(commands.Cog):
 
         try:
             msg = await ctx.send(f"""
-            **Language**: {random_language}\n**Date**: {date}\n**Index**: {index}\n{random_msg}
+            **Language**: {language}\n**Date**: {date}\n**Index**: {index}\n{random_msg}
             """)
             async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
-                async with conn.execute(f"SELECT * FROM {random_language} ORDER BY id DESC LIMIT 1") as cursor:
+                async with conn.execute(f"SELECT * FROM {language} ORDER BY id DESC LIMIT 1") as cursor:
                     index, hour, username, message, date = (await cursor.fetchall())[0]
 
             await self.add_reaction(ctx, msg, index)
@@ -212,7 +237,10 @@ class Chat(commands.Cog):
                         await ctx.send("Language is a required argument that is missing.", embed=embed)
                         return
                     language = language[0]
-                
+        elif language not in self.logs:
+            await ctx.send(f"Can't find {language} in languages :pensive:")
+            return
+
         async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
             async with conn.execute(f"SELECT * FROM {language} ORDER BY id DESC limit {chatlimit}") as cursor:
                 messages = await cursor.fetchall()
@@ -262,6 +290,8 @@ class Chat(commands.Cog):
                         await ctx.send("Language is a required argument that is missing.", embed=embed)
                         return
                     language = language[0]
+        elif language not in self.logs:
+            return
 
         async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
             async with await conn.execute(f"SELECT * FROM {language} WHERE username LIKE ?", (f"%{player}%",)) as cursor:
@@ -273,7 +303,8 @@ class Chat(commands.Cog):
 
         random_message = random.choice(messages) # Random message
         index, hour, username, message, date = random_message # assign stuff of message
-        chatmsg = f"{hour} {username}:{message}"
+        chatmsg = f"{hour} {username}:{message}\n"
+        chatmsg += f"getrandom deprecated. Instead use: %random {player}"
 
         async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
             async with conn.execute(f"SELECT * FROM {language} ORDER BY id DESC LIMIT 1") as cursor:
@@ -329,6 +360,9 @@ class Chat(commands.Cog):
                         await ctx.send("Language is a required argument that is missing.", embed=embed)
                         return
                     language = language[0]
+        elif language not in self.logs:
+            await ctx.send(f"Can't find {language} in languages")
+            return
 
 
         async with aiosqlite.connect("./Logs/Chatlogs.db") as db:
@@ -390,13 +424,16 @@ class Chat(commands.Cog):
                         await ctx.send("Language is a required argument that is missing.", embed=embed)
                         return
                     language = language[0]
+        elif language not in self.logs:
+            await ctx.send(f"Can't find {language} in languages :pensive:")
+            return
 
         async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
             async with conn.execute(f"SELECT * FROM {language} WHERE message LIKE ? ORDER BY id DESC LIMIT {limit}", (word,)) as cursor:
                 messages = await cursor.fetchall()
 
         if len(messages) < 1:
-            await ctx.send(f"Can't find message contains {word}")
+            await ctx.send(f"Can't find message contains {word.replace('%', '')}")
             return
 
         chatmsg = "```"
@@ -441,6 +478,8 @@ class Chat(commands.Cog):
                         await ctx.send("Language is a required argument that is missing.", embed=embed)
                         return
                     language = language[0]
+        elif language not in self.logs:
+            await ctx.send(f"Can't find {language} in languages")
 
         async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
             async with conn.execute(f"SELECT * FROM {language} WHERE username=? COLLATE NOCASE", (player,)) as cursor:
