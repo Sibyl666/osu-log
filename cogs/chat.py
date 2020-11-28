@@ -64,7 +64,7 @@ class Chat(commands.Cog):
         chatmsg = "```"
         for message in messages:
             indexx, hour, username, message, date = message # assign stuff of message
-            chatmsg += f"{hour} {username}:{message} \n"
+            chatmsg += f"{hour} {username}: {message} \n"
 
         chatmsg += "```"
 
@@ -132,7 +132,7 @@ class Chat(commands.Cog):
             chatmsg = "```"
             for message in messages:
                 index, hour, username, message, date = message
-                chatmsg += f"{hour} {username}:{message} \n"
+                chatmsg += f"{hour} {username}: {message} \n"
             chatmsg += "```"
 
             await context_msg.edit(content=chatmsg)
@@ -249,7 +249,7 @@ class Chat(commands.Cog):
         chatmsg = "```"
         for message in reversed(messages):
             index, hour, username, message, date = message # assign stuff of message
-            chatmsg += f"{hour} {username}:{message}\n"
+            chatmsg += f"{hour} {username}: {message}\n"
         chatmsg += "```"
 
         try:
@@ -257,68 +257,6 @@ class Chat(commands.Cog):
         except Exception as err:
             await ctx.send(err)
             
-
-    @commands.cooldown(1, 3)
-    @commands.command()
-    async def getrandom(self, ctx, player = None, language: str = None):
-        """ 
-            Get random message from given player
-        """
-
-        if player is None: # check database if user has default
-            async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id,)) as cursor:
-                    player = await cursor.fetchone()
-                    if player is None:
-                        embed = discord.Embed(description="You have to specify player if you didn't set one")
-                        embed.set_author(name="Help Menu")
-                        embed.add_field(name="Example", value="```%getrandom Sibyl turkish```")
-                        embed.add_field(name="Set user", value="```%osuset Sibyl```")
-                        await ctx.send("player is a required argument that is missing.", embed=embed)
-                        return
-                    discord_id, player, osu_id = player
-
-        if language is None: # check language if server has default
-            async with aiosqlite.connect("./Logs/Settings.db") as db:
-                async with db.execute(f"SELECT language FROM guilds WHERE guild_id=?", (ctx.guild.id,)) as cursor:
-                    language = await cursor.fetchone()
-                    if language is None:
-                        embed = discord.Embed(description="You have to specify language if server doesn't have default one")
-                        embed.set_author(name="Help Menu")
-                        embed.add_field(name="Example", value="```%getrandom Sibyl turkish``")
-                        embed.add_field(name="Set server default", value="```%setserverdefault turkish```")
-                        await ctx.send("Language is a required argument that is missing.", embed=embed)
-                        return
-                    language = language[0]
-        elif language not in self.logs:
-            return
-
-        async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
-            async with await conn.execute(f"SELECT * FROM {language} WHERE username LIKE ?", (f"%{player}%",)) as cursor:
-                messages = await cursor.fetchall()
-
-        if len(messages) < 1:
-            await ctx.send(f"Can't find messages of {player.replace('%', '')}")
-            return
-
-        random_message = random.choice(messages) # Random message
-        index, hour, username, message, date = random_message # assign stuff of message
-        chatmsg = f"{hour} {username}:{message}\n"
-        chatmsg += f"getrandom deprecated. Instead use: %random {player}"
-
-        async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
-            async with conn.execute(f"SELECT * FROM {language} ORDER BY id DESC LIMIT 1") as cursor:
-                table_length = (await cursor.fetchone())[0]
-
-        try:
-            msg = await ctx.send(
-                f"**Language**: {language}\n**Date**: {date}\n**Index**: {index}\n```{chatmsg}```")
-            await self.add_reaction(ctx, msg, table_length)
-        except Exception as err:
-            await ctx.send(err)
-            await msg.clear_reactions()
-
-
     @commands.cooldown(1, 3)
     @commands.command(aliases=["get"])
     async def getuser(self, ctx, player: fix_username = None, language: str = None, limit=10):
@@ -379,7 +317,7 @@ class Chat(commands.Cog):
         
         chatmsg = "```"
         for message in messages:
-            chatmsg += f"{player}:{''.join(message)} \n"
+            chatmsg += f"{player}: {''.join(message)} \n"
         chatmsg += "```"
 
         try:
@@ -439,7 +377,7 @@ class Chat(commands.Cog):
         chatmsg = "```"
         for message in reversed(messages):
             index, hour, username, message, date = message # assign stuff of message
-            chatmsg += f"{hour} {username}:{message} \n"
+            chatmsg += f"{hour} {username}: {message} \n"
         chatmsg += "```"
 
         try:
