@@ -88,6 +88,7 @@ class osu(commands.Cog):
             ax1.axis("off")
             ax1.invert_yaxis()
             ax1.plot(length_rank_history, rank_history, linewidth=3, color="#ffcc22")  # Rank plot
+            ax1.set_yscale("log")
 
             ax2 = fig.add_axes([.1, .1, .80, .80], label="Play Count", frame_on=False)
             ax2.axis("off")
