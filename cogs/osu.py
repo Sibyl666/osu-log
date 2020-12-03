@@ -2,6 +2,8 @@ import json
 import discord
 import timeago
 import aiosqlite
+import math
+import os
 from datetime import datetime
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont, ImageColor
@@ -129,6 +131,79 @@ class osu(commands.Cog):
                 await ctx.send(content=f"Graph for {user_info['username']} | :blue_circle: :Play Count :yellow_circle: :Rank",
                                file=discord.File(fp=image_binary, filename=f"{player}_graph.png"))
                 plt.close()
+
+
+    async def get_user_best(self, user_id, limit=10):
+        params = {
+            "k": os.getenv("osutoken"),
+            "u": user_id,
+            "limit": limit
+        }
+
+        async with ClientSession() as session:
+            async with session.get(f"https://osu.ppy.sh/api/get_user_best", params=params) as resp:
+                if not resp.status == 200:
+                    return False
+                return json.loads(await resp.text())
+
+
+    @commands.command()
+    async def piegraph(self, ctx, player: str = None, limit=100):
+
+        try:
+            limit = int(player)
+            async with aiosqlite.connect("./Logs/Settings.db") as db:
+                async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id,)) as cursor:
+                    player = await cursor.fetchone()
+                    discord_id, osu_username, osu_id = player
+        except:
+            pass
+
+        if player is None: # check database if user has default
+            async with aiosqlite.connect("./Logs/Settings.db") as db:
+                async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id,)) as cursor:
+                    player = await cursor.fetchone()
+                    if player is None:
+                        embed = discord.Embed(description="You have to specify player if you didn't set one")
+                        embed.set_author(name="Help Menu")
+                        embed.add_field(name="Example", value="```%getuser Sibyl turkish 30```")
+                        embed.add_field(name="Set user", value="```%osuset Sibyl```")
+                        await ctx.send("Player is a required argument that is missing.", embed=embed)
+                        return
+                    discord_id, osu_username, osu_id = player
+
+        user_plays = await self.get_user_best(player, limit)
+        if not user_plays:
+            await ctx.send(f"{osu_username} oyuncusunu bulamadım :pensive:")
+            return
+
+        fig = plt.figure(figsize=(5, 5))
+        fig.set_facecolor("#2a2226")
+        plt.gca().set_facecolor("#2a2226")
+        
+
+        rounded = [int(math.floor(float(play["pp"])/ 100.0) * 100 ) for play in user_plays]
+        my_dict = {rounded_num:rounded.count(rounded_num) for rounded_num in rounded}
+    
+        plt.pie([my_dict[pie] for pie in my_dict], labels=[f"{pie}({my_dict[pie]})" for pie in my_dict], autopct='%1.1f%%', textprops={'color':"w"})
+
+        plt.tight_layout(pad=0.05)
+        plt.axis("off")
+
+        sio = BytesIO()
+        canvas = FigureCanvas(plt.gcf())
+        canvas.print_png(sio)
+
+        image_binary = sio.getvalue()
+        graph_img = Image.open(BytesIO(image_binary)).convert("RGBA")
+        # graph_img = graph_img.crop((70, 4, 970, 174))
+
+        with BytesIO() as image_binary:
+            graph_img.save(image_binary, "png")
+            image_binary.seek(0)
+            await ctx.send(content=f"Graph for {osu_username}",
+                            file=discord.File(fp=image_binary, filename=f"{player}_graph.png"))
+            plt.close()
 
 
     def display_time(self, seconds, granularity=2):
