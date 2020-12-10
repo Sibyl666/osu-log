@@ -375,7 +375,7 @@ class Chat(commands.Cog):
             return
 
         chatmsg = "```"
-        for message in reversed(messages):
+        for message in messages:
             index, hour, username, message, date = message # assign stuff of message
             chatmsg += f"{hour} {username}: {message} \n"
         chatmsg += "```"
