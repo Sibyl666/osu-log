@@ -345,6 +345,11 @@ class osu(commands.Cog):
                 return country_flag_img
 
 
+    def supporter_hearths(self, background, supporter_level):
+        sup_img = Image.open(f"./ProfileStuff/supportermarks/{supporter_level}sup.png")
+        background.paste(sup_img, (142, 78), sup_img)
+
+
     @commands.command()
     @commands.cooldown(1, 2)
     async def image(self, ctx, player):
