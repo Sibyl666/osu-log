@@ -1,3 +1,4 @@
+import asyncio
 import json
 import discord
 import timeago
@@ -14,6 +15,53 @@ from matplotlib.font_manager import FontProperties
 from bs4 import BeautifulSoup
 from aiohttp import ClientSession
 from discord.ext import commands
+
+
+def flat(*nums):
+    'Build a tuple of ints from float or integer arguments. Useful because PIL crop and resize require integer points.'
+
+    return tuple(int(round(n)) for n in nums)
+
+
+class Size(object):
+    def __init__(self, pair):
+        self.width = float(pair[0])
+        self.height = float(pair[1])
+
+    @property
+    def aspect_ratio(self):
+        return self.width / self.height
+
+    @property
+    def size(self):
+        return flat(self.width, self.height)
+
+
+def cropped_thumbnail(img, size):
+    '''
+    Builds a thumbnail by cropping out a maximal region from the center of the original with
+    the same aspect ratio as the target size, and then resizing. The result is a thumbnail which is
+    always EXACTLY the requested size and with no aspect ratio distortion (although two edges, either
+    top/bottom or left/right depending whether the image is too tall or too wide, may be trimmed off.)
+    '''
+
+    original = Size(img.size)
+    target = Size(size)
+
+    if target.aspect_ratio > original.aspect_ratio:
+        # image is too tall: take some off the top and bottom
+        scale_factor = target.width / original.width
+        crop_size = Size((original.width, target.height / scale_factor))
+        top_cut_line = (original.height - crop_size.height) / 2
+        img = img.crop(flat(0, top_cut_line, crop_size.width, top_cut_line + crop_size.height))
+    elif target.aspect_ratio < original.aspect_ratio:
+        # image is too wide: take some off the sides
+        scale_factor = target.height / original.height
+        crop_size = Size((target.width / scale_factor, original.height))
+        side_cut_line = (original.width - crop_size.width) / 2
+        img = img.crop(flat(side_cut_line, 0, side_cut_line + crop_size.width, crop_size.height))
+
+    return img.resize(target.size, Image.ANTIALIAS)
 
 
 class osu(commands.Cog):
@@ -256,6 +304,83 @@ class osu(commands.Cog):
                             value=f"**Length**: {self.display_time(mutes['length'])}")
 
         await ctx.send(embed=embed)
+
+
+    async def cover_img(self, user_info):
+        async with ClientSession() as session:
+            async with session.get(user_info["cover_url"]) as resp:
+                cover_bytes = await resp.read()
+
+        cover_img = Image.open(BytesIO(cover_bytes)).convert("RGB")
+        cover_img = cropped_thumbnail(cover_img, (432, 148)).convert("RGBA")
+    
+        dark_opacity_image = Image.new("RGBA", cover_img.size, (0, 0, 0, 150))
+        dark_cover_img = Image.alpha_composite(cover_img, dark_opacity_image)
+
+        return dark_cover_img
+
+
+    async def img_avatar(self, user_id):
+        async with ClientSession() as session:
+            async with session.get(f"https://a.ppy.sh/{user_id}") as resp:
+                avatar_bytes = await resp.read()
+
+        avatar_img = Image.open(BytesIO(avatar_bytes))
+        avatar_img = cropped_thumbnail(avatar_img, (120, 120))
+        return avatar_img
+
+
+    def corner_mask(self, im):
+        mask = Image.open("./ProfileStuff/avatar_mask.png").convert("L")
+        return mask
+
+
+    async def img_country_flag(self, country_code):
+        async with ClientSession() as session:
+            async with session.get(f"https://osu.ppy.sh/images/flags/{country_code}.png") as resp:
+                country_flag_bytes = await resp.read()
+
+                country_flag_img = Image.open(BytesIO(country_flag_bytes))
+                country_flag_img.thumbnail((30, 20))
+                return country_flag_img
+
+
+    @commands.command()
+    @commands.cooldown(1, 2)
+    async def image(self, ctx, player):
+        user_info = await self.user_details_website(player)
+        if not user_info:
+            await ctx.send(f"{player} oyuncusunu bulamadım :pensive:")
+            return
+
+        background, avatar_img = await asyncio.gather(
+            self.cover_img(user_info),
+            self.img_avatar(user_info["id"])
+        )
+
+        template = Image.open("./ProfileStuff/background.png")
+        background.paste(template, (0, 0), template)
+
+        # Avatar
+        avatar_border_mask = self.corner_mask(avatar_img)
+        background.paste(avatar_img, (12, 15), avatar_border_mask)
+
+        # Username
+        self.write_to_background(background, (142, 15), user_info["username"], font="Quicksand.ttf")
+
+        # Supporter
+        if user_info["is_supporter"]:
+            self.supporter_hearths(background, user_info["support_level"])
+
+        # Country #142 115
+        country_flag_img = await self.img_country_flag(user_info["country"]["code"])
+        background.paste(country_flag_img, (142, 115), country_flag_img.convert("RGBA"))
+        self.write_to_background(background, (180, 118), user_info["country"]["name"], font_size=14, font="Quicksand.ttf")
+
+        with BytesIO() as image_binary:
+            background.save(image_binary, "png")
+            image_binary.seek(0)
+            await ctx.send(file=discord.File(fp=image_binary, filename=f"{player}.png"))
 
 
 def setup(bot):

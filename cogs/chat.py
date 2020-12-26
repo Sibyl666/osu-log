@@ -20,6 +20,15 @@ def add_percent(player: str) -> str:
         return f"%{player}%"
 
 
+def getchatmsg(msgArray: list) -> str:
+    chatmsg = "```"
+    for messageTuple in messages:
+        indexx, hour, username, message, date = messageTuple # assign stuff of message
+        chatmsg += f"{hour} {username}: {message} \n"
+
+    chatmsg += "```"
+
+
 class Chat(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
