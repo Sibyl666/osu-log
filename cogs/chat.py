@@ -180,7 +180,7 @@ class Chat(commands.Cog):
                         language = language[0]
 
             async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
-                async with await conn.execute(f"SELECT * FROM {language} WHERE username LIKE ?", (f"%{player}%",)) as cursor:
+                async with await conn.execute(f"SELECT * FROM {language} WHERE username=? COLLATE NOCASE", (f"%{player}%",)) as cursor:
                     messages = await cursor.fetchall()
                     
                     if len(messages) < 1:
