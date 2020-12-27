@@ -156,7 +156,7 @@ class Chat(commands.Cog):
 
 
     @commands.command()
-    async def random(self, ctx, player:str = None, language: str = None):
+    async def random(self, ctx, player:fix_username = None, language: str = None):
         """
             Gets Random Message
         """
@@ -180,7 +180,7 @@ class Chat(commands.Cog):
                         language = language[0]
 
             async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
-                async with await conn.execute(f"SELECT * FROM {language} WHERE username=? COLLATE NOCASE", (f"%{player}%",)) as cursor:
+                async with await conn.execute(f"SELECT * FROM {language} WHERE username=? COLLATE NOCASE", (player,)) as cursor:
                     messages = await cursor.fetchall()
                     
                     if len(messages) < 1:
