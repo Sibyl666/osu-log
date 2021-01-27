@@ -108,6 +108,11 @@ class osu(commands.Cog):
                 async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id,)) as cursor:
                     player = await cursor.fetchone()
                     if player is None:
+                        embed = discord.Embed(description="You have to specify player if you didn't set one")
+                        embed.set_author(name="Help Menu")
+                        embed.add_field(name="Example", value="```%graph Sibyl```")
+                        embed.add_field(name="Set user", value="```%osuset Sibyl```")
+                        await ctx.send("Player is a required argument that is missing.", embed=embed)
                         return
                     players.append(player[2])
                     
@@ -121,7 +126,12 @@ class osu(commands.Cog):
                 await ctx.send("Can't find player")
                 return
 
-            rank_history = user_info["rankHistory"]["data"]
+            try:
+                rank_history = user_info["rankHistory"]["data"]
+            except:
+                await ctx.send("This user doesn't have rank history")
+                return
+
             length_rank_history = [*range(len(rank_history))]
 
             play_counts = [play["count"] for play in user_info["monthly_playcounts"]][-3:]
@@ -203,7 +213,7 @@ class osu(commands.Cog):
             async with aiosqlite.connect("./Logs/Settings.db") as db:
                 async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id,)) as cursor:
                     player = await cursor.fetchone()
-                    discord_id, osu_username, osu_id = player
+                    discord_id, player, osu_id = player
         except:
             pass
 
@@ -214,15 +224,15 @@ class osu(commands.Cog):
                     if player is None:
                         embed = discord.Embed(description="You have to specify player if you didn't set one")
                         embed.set_author(name="Help Menu")
-                        embed.add_field(name="Example", value="```%getuser Sibyl turkish 30```")
+                        embed.add_field(name="Example", value="```%piegraph Sibyl 10```")
                         embed.add_field(name="Set user", value="```%osuset Sibyl```")
                         await ctx.send("Player is a required argument that is missing.", embed=embed)
                         return
-                    discord_id, osu_username, osu_id = player
+                    discord_id, player, osu_id = player
 
         user_plays = await self.get_user_best(player, limit)
         if not user_plays:
-            await ctx.send(f"{osu_username} oyuncusunu bulamadım :pensive:")
+            await ctx.send(f"{player} oyuncusunu bulamadım :pensive:")
             return
 
         fig = plt.figure(figsize=(5, 5))
@@ -249,7 +259,7 @@ class osu(commands.Cog):
         with BytesIO() as image_binary:
             graph_img.save(image_binary, "png")
             image_binary.seek(0)
-            await ctx.send(content=f"Graph for {osu_username}",
+            await ctx.send(content=f"Graph for {player}",
                             file=discord.File(fp=image_binary, filename=f"{player}_graph.png"))
             plt.close()
 
@@ -280,7 +290,11 @@ class osu(commands.Cog):
                 async with db.execute(f"SELECT osu_username FROM users WHERE discord_id=?", (ctx.author.id,)) as cursor:
                     player = await cursor.fetchone()
                     if player is None:
-                        await ctx.send("Player is a required argument that is missing")
+                        embed = discord.Embed(description="You have to specify player if you didn't set one")
+                        embed.set_author(name="Help Menu")
+                        embed.add_field(name="Example", value="```%mute Sibyl```")
+                        embed.add_field(name="Set user", value="```%osuset Sibyl```")
+                        await ctx.send("Player is a required argument that is missing.", embed=embed)
                         return
                     player = player[0]
                     
@@ -353,6 +367,20 @@ class osu(commands.Cog):
     @commands.command()
     @commands.cooldown(1, 2)
     async def image(self, ctx, player):
+        if player is None: # check database if user has default
+            async with aiosqlite.connect("./Logs/Settings.db") as db:
+                async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id,)) as cursor:
+                    player = await cursor.fetchone()
+                    if player is None:
+                        embed = discord.Embed(description="You have to specify player if you didn't set one")
+                        embed.set_author(name="Help Menu")
+                        embed.add_field(name="Example", value="```%image Sibyl```")
+                        embed.add_field(name="Set user", value="```%osuset Sibyl```")
+                        await ctx.send("Player is a required argument that is missing.", embed=embed)
+                        return
+                    discord_id, player, osu_id = player
+
+
         user_info = await self.user_details_website(player)
         if not user_info:
             await ctx.send(f"{player} oyuncusunu bulamadım :pensive:")
