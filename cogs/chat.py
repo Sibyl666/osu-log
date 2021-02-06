@@ -1,4 +1,5 @@
 import re
+from typing import List
 import aiosqlite
 import sqlite3
 import random
@@ -16,8 +17,11 @@ def fix_username(player: str) -> str:
 
 def add_percent(player: str) -> str:
     if not player is None:
-        return f"%{player}%"
+        return f"% {player} %"
 
+def MaxLength(messages: list) -> int:
+    usernameLengthList = [len(message[2]) for message in messages]
+    return max(usernameLengthList)
 
 class Chat(commands.Cog):
     def __init__(self, bot):
@@ -64,10 +68,13 @@ class Chat(commands.Cog):
             async with conn.execute(f"SELECT * FROM {language} LIMIT {index - 6}, 11") as cursor:
                 messages = await cursor.fetchall()
 
+        MaxLengthint = MaxLength(messages)
+
         chatmsg = "```"
         for message in messages:
             indexx, hour, username, message, date = message # assign stuff of message
-            chatmsg += f"{hour} {username}: {message} \n"
+            addSpaceLenght = MaxLengthint - len(username)
+            chatmsg += f"{hour} {username}:{' '*addSpaceLenght} {message} \n"
 
         chatmsg += "```"
 
@@ -132,10 +139,13 @@ class Chat(commands.Cog):
                 async with conn.execute(f"SELECT * FROM {language} LIMIT {startOfMessages}, 10") as cursor:
                     messages = await cursor.fetchall()
 
+            MaxLengthint = MaxLength(messages)
+
             chatmsg = "```"
             for message in messages:
                 index, hour, username, message, date = message
-                chatmsg += f"{hour} {username}: {message} \n"
+                addSpaceLenght = MaxLengthint - len(username)
+                chatmsg += f"{hour} {username}:{' '*addSpaceLenght} {message} \n"
             chatmsg += "```"
 
             await context_msg.edit(content=chatmsg)
@@ -248,11 +258,13 @@ class Chat(commands.Cog):
             async with conn.execute(f"SELECT * FROM {language} ORDER BY id DESC limit {chatlimit}") as cursor:
                 messages = await cursor.fetchall()
             
-        
+        MaxLengthint = MaxLength(messages)
+
         chatmsg = "```"
         for message in reversed(messages):
             index, hour, username, message, date = message # assign stuff of message
-            chatmsg += f"{hour} {username}: {message}\n"
+            addSpaceLenght = MaxLengthint - len(username)
+            chatmsg += f"{hour} {username}:{' '*addSpaceLenght} {message}\n"
         chatmsg += "```"
 
         try:
@@ -415,10 +427,13 @@ class Chat(commands.Cog):
             await ctx.send(f"Can't find message contains {word.replace('%', '')}")
             return
 
+        MaxLengthint = MaxLength(messages)
+
         chatmsg = "```"
         for message in messages:
             index, hour, username, message, date = message # assign stuff of message
-            chatmsg += f"{hour} {username}: {message} \n"
+            addSpaceLenght = MaxLengthint - len(username)
+            chatmsg += f"{index} | {hour} {username}:{' '*addSpaceLenght} {message} \n"
         chatmsg += "```"
 
         try:
