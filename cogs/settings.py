@@ -1,6 +1,5 @@
 import os
 import json
-import discord
 import aiosqlite
 from aiohttp import ClientSession
 from discord.ext import commands

@@ -7,11 +7,9 @@ import math
 import os
 from datetime import datetime
 from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont, ImageColor
+from PIL import Image, ImageDraw, ImageFont
 from matplotlib import pyplot as plt
-from matplotlib.text import Annotation
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-from matplotlib.font_manager import FontProperties
 from bs4 import BeautifulSoup
 from aiohttp import ClientSession
 from discord.ext import commands

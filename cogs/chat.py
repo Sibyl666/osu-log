@@ -1,14 +1,13 @@
-import os
 import re
-import sqlite3
 import aiosqlite
+import sqlite3
 import random
 import asyncio
 import discord
-import itertools
 from io import StringIO
 from collections import Counter
 from discord.ext import commands
+from discord.ext.commands.context import Context
 
 
 def fix_username(player: str) -> str:
@@ -20,25 +19,20 @@ def add_percent(player: str) -> str:
         return f"%{player}%"
 
 
-def getchatmsg(msgArray: list) -> str:
-    chatmsg = "```"
-    for messageTuple in messages:
-        indexx, hour, username, message, date = messageTuple # assign stuff of message
-        chatmsg += f"{hour} {username}: {message} \n"
-
-    chatmsg += "```"
-
-
 class Chat(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-
+        self.CheckIndexes()
 
     @property
     def logs(self) -> list:
         return ['announce', 'arabic', 'balkan', 'bulgarian', 'cantonese', 'chinese', 'ctb', 'czechoslovak', 'dutch', 'english', 'filipino', 'finnish', 'french', 'german', 'greek', 'hebrew', 
 'help', 'hungarian', 'indonesian', 'italian', 'japanese', 'korean', 'malaysian', 'modhelp', 'modreqs', 'osu', 'osumania', 'polish', 'portuguese', 'romanian', 'russian', 'skandinavian', 'spanish', 'taiko', 'thai', 'turkish', 'ukrainian', 'videogames', 'vietnamese']
 
+    def CheckIndexes(self):
+        conn = sqlite3.connect("./Logs/Chatlogs.db")
+        conn.execute(f"CREATE INDEX IF NOT EXISTS TurkishIndexTable on turkish(username)")
+        conn.close()
 
     async def add_reaction(self, ctx, msg, content_length):
         await msg.add_reaction("♿")
@@ -180,7 +174,7 @@ class Chat(commands.Cog):
                         language = language[0]
 
             async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
-                async with await conn.execute(f"SELECT * FROM {language} WHERE username=? COLLATE NOCASE", (player,)) as cursor:
+                async with await conn.execute(f"SELECT * FROM {language} WHERE username=? ", (player,)) as cursor:
                     messages = await cursor.fetchall()
                     
                     if len(messages) < 1:
@@ -203,7 +197,7 @@ class Chat(commands.Cog):
         if index < 5:
             index = 5
 
-        msg = f"{hour} {username}:{message}"
+        msg = f"{hour} {username}: {message}"
         random_msg = f"```{index} | {msg} \n```"
 
         try:
@@ -211,8 +205,8 @@ class Chat(commands.Cog):
             **Language**: {language}\n**Date**: {date}\n**Index**: {index}\n{random_msg}
             """)
             async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
-                async with conn.execute(f"SELECT * FROM {language} ORDER BY id DESC LIMIT 1") as cursor:
-                    index, hour, username, message, date = (await cursor.fetchall())[0]
+                async with conn.execute(f"SELECT max(Id) FROM {language}") as cursor:
+                    index = (await cursor.fetchone())[0]
 
             await self.add_reaction(ctx, msg, index)
         except:
@@ -313,7 +307,7 @@ class Chat(commands.Cog):
 
 
         async with aiosqlite.connect("./Logs/Chatlogs.db") as db:
-            async with db.execute(f"SELECT message FROM {language} WHERE username=? COLLATE NOCASE", (player,)) as cursor:
+            async with db.execute(f"SELECT message FROM {language} WHERE username=? ", (player,)) as cursor:
                 if limit < 0:
                     messages = (await cursor.fetchall())[:abs(limit)]
                     messages.reverse()
@@ -333,6 +327,44 @@ class Chat(commands.Cog):
             await ctx.send(content=chatmsg)
         except Exception as err:
             await ctx.send(content=err)
+
+    @commands.cooldown(1, 3)
+    @commands.command()
+    async def getcontext(self, ctx, messageId: int, limit: int = 10, language: str = None):
+        if language is None: # check language if server has default
+            async with aiosqlite.connect("./Logs/Settings.db") as db:
+                async with db.execute(f"SELECT language FROM guilds WHERE guild_id=?", (ctx.guild.id,)) as cursor:
+                    language = await cursor.fetchone()
+                    if language is None:
+                        embed = discord.Embed(description="You have to specify language if server doesn't have default one")
+                        embed.set_author(name="Help Menu")
+                        embed.add_field(name="Example", value="```%getcontext 11111```")
+                        embed.add_field(name="Set server default", value="```%setserverdefault turkish```")
+                        await ctx.send("Language is a required argument that is missing.", embed=embed)
+                        return
+                    language = language[0]
+        elif language not in self.logs:
+            await ctx.send(f"Can't find {language} in languages")
+            return
+
+        async with aiosqlite.connect("./Logs/Chatlogs.db") as db:
+            async with db.execute(f"SELECT * FROM {language} WHERE id=?", (messageId,)) as cursor:
+                context = await cursor.fetchone()
+                if not context:
+                    await ctx.send(f"Can't find messages with {messageId} id")
+                    return
+                index, hour, username, message, date = context
+
+        message = f"```{hour} {username}: {message}```"
+        msg = await ctx.send(f"""
+            **Language**: {language}\n**Date**: {date}\n**Index**: {index}\n{message}
+            """)
+
+        async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
+            async with conn.execute(f"SELECT max(Id) FROM {language}") as cursor:
+                index = (await cursor.fetchone())[0]
+
+        await self.add_reaction(ctx, msg, index)
 
 
     @commands.cooldown(1, 3)
@@ -429,7 +461,7 @@ class Chat(commands.Cog):
             await ctx.send(f"Can't find {language} in languages")
 
         async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
-            async with conn.execute(f"SELECT * FROM {language} WHERE username=? COLLATE NOCASE", (player,)) as cursor:
+            async with conn.execute(f"SELECT * FROM {language} WHERE username=? ", (player,)) as cursor:
                 messages = (await cursor.fetchall())
 
         if len(messages) < 1:
