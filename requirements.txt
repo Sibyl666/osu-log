@@ -1,0 +1,7 @@
+discord
+python-dotenv
+aiosqlite
+timeago
+matplotlib
+bs4
+aiohttp

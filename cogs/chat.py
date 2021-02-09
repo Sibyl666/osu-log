@@ -1,27 +1,38 @@
-import re
-from typing import List
 import aiosqlite
 import sqlite3
 import random
 import asyncio
 import discord
+import re
 from io import StringIO
 from collections import Counter
 from discord.ext import commands
-from discord.ext.commands.context import Context
 
 
 def fix_username(player: str) -> str:
     return player.replace(" ", "_")
 
 
-def add_percent(player: str) -> str:
-    if not player is None:
-        return f"% {player} %"
+def SplitWordTwo(WordList: list) -> tuple:
+    Middle = len(WordList) / 2
+    FirstHalf = "".join(WordList[:int(Middle)])
+    SecondHald = "".join(WordList[int(Middle):])
+    return (FirstHalf, SecondHald)
+    
 
 def MaxLength(messages: list) -> int:
     usernameLengthList = [len(message[2]) for message in messages]
     return max(usernameLengthList)
+
+
+def regexp(expr: str, message: str) -> str:
+    try:
+        match = re.search(r'\b{}\b'.format(expr), message, re.IGNORECASE)
+        if not match is None:
+            return True
+    except:
+        return False
+
 
 class Chat(commands.Cog):
     def __init__(self, bot):
@@ -319,20 +330,19 @@ class Chat(commands.Cog):
 
 
         async with aiosqlite.connect("./Logs/Chatlogs.db") as db:
-            async with db.execute(f"SELECT message FROM {language} WHERE username=? ", (player,)) as cursor:
+            async with db.execute(f"SELECT id, date, message FROM {language} WHERE username=? ", (player,)) as cursor:
                 if limit < 0:
-                    messages = (await cursor.fetchall())[:abs(limit)]
-                    messages.reverse()
+                    result = (await cursor.fetchall())[:abs(limit)]
                 else:
-                    messages = (await cursor.fetchall())[-limit:]
+                    result = (await cursor.fetchall())[-limit:]
 
-        if len(messages) < 1:
+        if len(result) < 1:
             await ctx.send(f"Can't find messages of {player} in {language}")
             return
         
         chatmsg = "```"
-        for message in messages:
-            chatmsg += f"{player}: {''.join(message)} \n"
+        for messageId, date, message in result:
+            chatmsg += f"{messageId} | {date} {player}: {''.join(message)} \n"
         chatmsg += "```"
 
         try:
@@ -381,7 +391,7 @@ class Chat(commands.Cog):
 
     @commands.cooldown(1, 3)
     @commands.command()
-    async def search(self, ctx, word: add_percent = None, language: str = None, limit: int=10):
+    async def search(self, ctx, word: str = None, language: str = None, limit: int=10):
         """
             Search word in logs
         """
@@ -420,7 +430,8 @@ class Chat(commands.Cog):
             return
 
         async with aiosqlite.connect("./Logs/Chatlogs.db") as conn:
-            async with conn.execute(f"SELECT * FROM {language} WHERE message LIKE ? ORDER BY id DESC LIMIT {limit}", (word,)) as cursor:
+            await conn.create_function("REGEXP", 2, regexp)
+            async with conn.execute(f"""SELECT * FROM {language} WHERE message REGEXP ? ORDER BY id DESC LIMIT {limit}""", (word,)) as cursor:
                 messages = await cursor.fetchall()
 
         if len(messages) < 1:
@@ -430,7 +441,7 @@ class Chat(commands.Cog):
         MaxLengthint = MaxLength(messages)
 
         chatmsg = "```"
-        for message in messages:
+        for message in reversed(messages):
             index, hour, username, message, date = message # assign stuff of message
             addSpaceLenght = MaxLengthint - len(username)
             chatmsg += f"{index} | {hour} {username}:{' '*addSpaceLenght} {message} \n"
