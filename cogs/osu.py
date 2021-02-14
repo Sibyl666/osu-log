@@ -364,7 +364,7 @@ class osu(commands.Cog):
 
     @commands.command()
     @commands.cooldown(1, 2)
-    async def image(self, ctx, player):
+    async def image(self, ctx, player: str = None):
         if player is None: # check database if user has default
             async with aiosqlite.connect("./Logs/Settings.db") as db:
                 async with db.execute(f"SELECT * FROM users WHERE discord_id=?", (ctx.author.id,)) as cursor:
