@@ -56,6 +56,7 @@ class settings(commands.Cog):
 
 
     @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     @commands.command()
     async def setserverdefault(self, ctx, language): # ToDo: check if table exists
         if not language in self.logs:
