@@ -123,7 +123,7 @@ class osu(commands.Cog):
             if not user_info:
                 await ctx.send("Can't find player")
                 return
-
+                
             try:
                 rank_history = user_info["rankHistory"]["data"]
             except:
@@ -162,7 +162,7 @@ class osu(commands.Cog):
 
             # Write rank to left bottom or up
             txt = Image.new("RGBA", graph_img.size, (255, 255, 255, 0))
-            self.write_to_background(txt, (7, 10), f"#{user_info['statistics']['rank']['global']}",
+            self.write_to_background(txt, (7, 10), f"#{user_info['statistics']['global_rank']}",
                                         font_size=150, fill=(0, 0, 0, 70), center=True)
 
 

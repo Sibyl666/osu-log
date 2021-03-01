@@ -55,7 +55,7 @@ class settings(commands.Cog):
                     await ctx.send(f"Updated {ctx.author.name}'s profile {osu_username} to {user['username']}")
 
 
-    @commands.has_permissions(administrator=True)
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
     @commands.command()
     async def setserverdefault(self, ctx, language): # ToDo: check if table exists
         if not language in self.logs:
